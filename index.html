@@ -8,77 +8,102 @@
     <title>SKY SNIPER</title>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, sans-serif; color: white; -webkit-user-select: none; }
-        .screen { position: absolute; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10; padding: env(safe-area-inset-top) 20px; box-sizing: border-box; }
+        .screen { position: absolute; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10; padding: env(safe-area-inset-top) 20px; box-sizing: border-box; text-align: center; }
         .active { display: flex !important; }
-        #bg-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background-size: cover; background-position: center; filter: brightness(0.3); display: none; }
-        .box { position: relative; z-index: 20; background: rgba(0,0,0,0.85); padding: 35px 25px; border-radius: 30px; border: 3px solid #ff3b30; width: 100%; max-width: 340px; backdrop-filter: blur(10px); }
-        .sh-msg { font-size: 3.5rem; font-weight: 900; color: #ff3b30; margin: 15px 0; animation: shake 0.2s infinite; }
-        #display { font-size: 6.5rem; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: -3px; }
-        button { -webkit-appearance: none; border: none; padding: 18px; border-radius: 16px; font-weight: 800; font-size: 1.3rem; cursor: pointer; width: 100%; margin-top: 20px; transition: all 0.2s; }
+        #bg-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; background-size: cover; background-position: center; filter: brightness(0.4); display: none; }
+        .box { position: relative; z-index: 20; background: rgba(0,0,0,0.85); padding: 35px 25px; border-radius: 30px; border: 3px solid #ff3b30; width: 85%; max-width: 340px; backdrop-filter: blur(10px); box-shadow: 0 0 20px rgba(255,59,48,0.5); }
+        .sh-msg { font-size: 3rem; font-weight: 900; color: #ff3b30; margin: 15px 0; animation: shake 0.1s infinite; }
+        #display { font-size: 6rem; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: -3px; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        button { -webkit-appearance: none; border: none; padding: 20px; border-radius: 20px; font-weight: 800; font-size: 1.4rem; cursor: pointer; width: 100%; margin-top: 20px; transition: 0.2s; }
         .btn-main { background: #fff; color: #000; }
-        input[type="time"] { -webkit-appearance: none; background: #1c1c1e; border: 1px solid #3a3a3c; color: #fff; font-size: 2.2rem; padding: 15px; border-radius: 18px; width: 220px; text-align: center; }
-        @keyframes shake { 0%{transform:rotate(1deg)} 50%{transform:rotate(-1deg)} 100%{transform:rotate(1deg)} }
+        input[type="time"] { -webkit-appearance: none; background: #1c1c1e; border: 2px solid #ff3b30; color: #fff; font-size: 2.5rem; padding: 15px; border-radius: 18px; width: 80%; text-align: center; font-weight: 800; }
+        @keyframes shake { 0%{transform:translate(2px,1px)} 50%{transform:translate(-2px,-1px)} 100%{transform:translate(2px,1px)} }
     </style>
 </head>
-<body>
+<body onclick="enableAudio()">
     <div id="bg-image"></div>
+
     <div id="setup-screen" class="screen active">
+        <h1 style="margin-bottom:30px; font-weight:900; letter-spacing:-1px;">TARGET TIME</h1>
         <input type="time" id="alarmTime" onchange="init()">
-        <p style="color:#444; margin-top:25px;">시간을 설정하면 목표가 고정됩니다.</p>
+        <p id="status-msg" style="color:#666; margin-top:30px; font-size:0.9rem;">시간을 설정하면 감시가 시작됩니다.<br>(화면을 한 번 터치해주세요)</p>
     </div>
+
     <div id="alarm-screen" class="screen">
         <div class="box">
-            <div id="sh-title" style="color:#aaa; letter-spacing:2px;">TARGET LOCKED</div>
+            <div id="sh-title" style="color:#aaa; letter-spacing:2px; font-weight:700;">UNIVERSITY LOCKED</div>
             <div class="sh-msg">공부해!!</div>
-            <p id="sh-quote" style="font-size:1.1rem; line-height:1.5; color:#eee; word-break:keep-all;"></p>
-            <button class="btn-main" onclick="start()">책상 앞에 앉았습니다</button>
+            <p id="sh-quote" style="font-size:1.1rem; line-height:1.6; color:#eee; word-break:keep-all;"></p>
+            <button class="btn-main" onclick="startTimer()">책상 앞에 앉았습니다</button>
         </div>
     </div>
+
     <div id="timer-screen" class="screen">
         <div id="display">60:00</div>
-        <button style="background:none; color:#333; margin-top:40px; font-size:0.9rem;" onclick="location.reload()">중단(루저)</button>
+        <button style="background:none; color:#444; margin-top:40px; font-size:1rem;" onclick="location.reload()">항복하고 중단하기</button>
     </div>
+
     <div id="player"></div>
+
     <script>
-        let timeLeft = 3600, clock, loaded = false, preImg = new Image();
+        let timeLeft = 3600, clock, audioEnabled = false;
         const data = [
-            {n:"SEOUL NAT'L UNIV.", i:"https://images.unsplash.com/photo-1622397333309-3056849bc70b?w=1000", q:"남들 잘 때 공부하면 앞서가고,<br>남들 공부할 때 공부하면 추월한다."},
-            {n:"YONSEI UNIV.", i:"https://images.unsplash.com/photo-1590059510137-059950798992?w=1000", q:"오늘 걷지 않으면 내일은 뛰어야 한다."},
-            {n:"KOREA UNIV.", i:"https://images.unsplash.com/photo-1541339907198-e08756ebafe3?w=1000", q:"지금 흘린 침은 내일의 눈물이 되고,<br>지금 흘린 땀은 내일의 미소가 된다."}
+            {n:"서울대학교", i:"https://images.unsplash.com/photo-1622397333309-3056849bc70b?w=1000", q:"남들 잘 때 공부하면 앞서가고,<br>남들 공부할 때 공부하면 추월한다."},
+            {n:"연세대학교", i:"https://images.unsplash.com/photo-1590059510137-059950798992?w=1000", q:"오늘 걷지 않으면 내일은 뛰어야 한다."},
+            {n:"고려대학교", i:"https://images.unsplash.com/photo-1541339907198-e08756ebafe3?w=1000", q:"지금 흘린 침은 내일의 눈물이 되고,<br>지금 흘린 땀은 내일의 미소가 된다."}
         ];
+
+        function enableAudio() { audioEnabled = true; document.getElementById('status-msg').innerText = "감시 대기 중..."; }
+
         function init() {
             const target = document.getElementById('alarmTime').value;
             if(!target) return;
-            document.getElementById('setup-screen').style.opacity = "0.1";
-            const pick = data[Math.floor(Math.random()*data.length)];
-            preImg.src = pick.i;
-            preImg.onload = () => { loaded = true; };
+            
+            document.getElementById('status-msg').innerHTML = `<span style="color:#ff3b30; font-weight:bold;">${target}</span> 에 타겟이 나타납니다.`;
+            
             const check = setInterval(() => {
                 const now = new Date();
                 const cur = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-                if(cur === target && loaded) { clearInterval(check); trigger(pick); }
+                if(cur === target) { 
+                    clearInterval(check); 
+                    triggerAlarm(); 
+                }
             }, 1000);
         }
-        function trigger(pick) {
+
+        function triggerAlarm() {
+            const pick = data[Math.floor(Math.random()*data.length)];
             document.getElementById('bg-image').style.backgroundImage = `url('${pick.i}')`;
             document.getElementById('bg-image').style.display = "block";
             document.getElementById('sh-title').innerText = pick.n;
             document.getElementById('sh-quote').innerHTML = pick.q;
-            document.getElementById('alarm-screen').classList.add('active');
+            
             document.getElementById('setup-screen').classList.remove('active');
+            document.getElementById('alarm-screen').classList.add('active');
+
+            // 유튜브 알람음 (시끄러운 것 위주)
             const v = ["jaxcCwpzQgg", "0PCvaHV9e3Q", "voPX3Gr-mP0"][Math.floor(Math.random()*3)];
             document.getElementById('player').innerHTML = `<iframe width="0" height="0" src="https://www.youtube.com/embed/${v}?autoplay=1&playsinline=1" frameborder="0" allow="autoplay"></iframe>`;
+            
+            // 아이폰 진동 효과 (Haptic)
+            if(window.navigator.vibrate) window.navigator.vibrate([500, 200, 500]);
         }
-        function start() {
+
+        function startTimer() {
+            document.getElementById('player').innerHTML = ""; 
             document.getElementById('bg-image').style.display = "none";
             document.getElementById('alarm-screen').classList.remove('active');
             document.getElementById('timer-screen').classList.add('active');
-            setTimeout(() => { document.getElementById('player').innerHTML = ""; }, 10000);
+
             clock = setInterval(() => {
                 timeLeft--;
                 let m = Math.floor(timeLeft/60), s = timeLeft%60;
                 document.getElementById('display').innerText = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-                if(timeLeft <= 0) { clearInterval(clock); alert("영광의 1시간 완료!"); location.reload(); }
+                if(timeLeft <= 0) { 
+                    clearInterval(clock); 
+                    alert("축하합니다. 1시간의 전투에서 승리하셨습니다."); 
+                    location.reload(); 
+                }
             }, 1000);
         }
     </script>
